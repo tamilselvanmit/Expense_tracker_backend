@@ -40,7 +40,7 @@ const PORT = 8000;
 //     res.json('Hellooooo World');
 // });
 
-const mongourl = "mongodb://0.0.0.0:27017/practise";      
+const mongourl = "mongodb+srv://tamilselvanm2023it:tamilselvanm1234@cluster0.wnvpw.mongodb.net/tracker";      
 
 const expenseSchema = new mongoose.Schema({
     id: { type: String, required: true, unique: true },
@@ -160,3 +160,5 @@ app.delete("/api/expenses/:id", async (req, res) => {
         res.status(500).json({ message: "Internal server error", error });
     }
 });
+
+
