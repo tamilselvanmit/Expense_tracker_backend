@@ -26,6 +26,8 @@ const app = express();
 app.use(express.json());
 const mongoose = require('mongoose');
 const { v4: uuidv4 } = require('uuid');
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 const PORT = 8000;
 
 // app.get('/:id', (req, res) => {
@@ -39,7 +41,7 @@ const PORT = 8000;
 
 //     res.json('Hellooooo World');
 // });
-
+const JWT_SECRET = 'your_secret_key';
 const mongourl = "mongodb+srv://tamilselvanm2023it:tamilselvanm1234@cluster0.wnvpw.mongodb.net/tracker";      
 
 const expenseSchema = new mongoose.Schema({
@@ -162,3 +164,97 @@ app.delete("/api/expenses/:id", async (req, res) => {
 });
 
 
+/Authentication/
+
+//Schema
+const userSchema = new mongoose.Schema({
+    username: {type:String,required:true,unique:true},
+    password:{type:String,required:true},
+    });
+
+//Model
+const User = mongoose.model("User",userSchema);
+
+//Register api
+app.post("/api/user/register",async(req,res)=>{
+    const {username,password} = req.body;
+//Validation
+    if(!username || !password){
+        return res.status(400).json({message:"Username is required"});
+    }
+//Check if user already exists
+    const ExsistingUser = await User.find({username});
+    if(!ExsistingUser){
+        return res.status(400).json({message:"User already exists"});
+    }
+//Hash the password
+    const hashedpass = await bcrypt.hash(password,8);
+
+//Create new user
+    const newUser = new User({
+        username,
+        password:hashedpass,
+    })
+
+    await newUser.save();
+
+    return res.status(200).json({message:"User registered successfully"});
+})
+
+//Login api
+app.post("/api/user/login",async(req,res)=>{
+    const {username,password} = req.body;
+//Validation
+    if(!username || !password){
+        return res.status(400).json({message:"Username and password is required"});
+    }
+
+//Check if user exists
+    const user = await User.findOne({username});
+    if(!user){
+        return res.status(400).json({message:"User not found"});
+    }
+//Check if password is correct
+    const isPasswordMatch = await bcrypt.compare(password,user.password);
+    
+    if(!isPasswordMatch){
+        return res.status(400).json({message:"Invalid credentials"});
+    }
+
+    const token = jwt.sign({username},"Tamil",{expiresIn:"2h"});
+
+    return res.status(200).json(
+        {message:"Login successful",
+        token:token,
+        }
+    );
+    
+})
+
+//midleware to check the jwt 
+
+const authenticateToken = (req, res, next) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (!token) {
+        return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    jwt.verify(token, "Tamil", (err, user) => {
+        if (err) {
+            return res.status(403).json({ message: "Forbidden" });
+        }
+        req.user = user;
+        next();
+    });
+};
+//api to get user details
+
+app.get("/api/user/me",authenticateToken, async (req, res) => {
+    const user = await
+        
+        User.findOne({ username: req.user.username });
+    res.status(200).json(user);
+}
+);
